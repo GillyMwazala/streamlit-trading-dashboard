@@ -41,34 +41,26 @@ st.subheader(f"📈 {symbol} - {timeframe} Chart")
 df = yf.download(tickers=symbol, interval=interval_map[timeframe], period=period)
 
 # Check for valid data
-if df.empty:
+if df.empty or "Close" not in df.columns:
     st.error("❌ Failed to fetch data. Try a different symbol or timeframe.")
     st.stop()
 
 df.reset_index(inplace=True)
-df.columns = [c.strip().title() for c in df.columns]  # Normalize column names
-
-# Verify required columns
-required_cols = ["Datetime", "Open", "High", "Low", "Close", "Volume"]
-missing = [col for col in required_cols if col not in df.columns]
-if missing:
-    st.error(f"❌ Missing columns in data: {', '.join(missing)}")
-    st.write("Columns found:", df.columns.tolist())
-    st.stop()
+df.columns = [str(c).strip().title() for c in df.columns]  # Safely normalize column names
 
 # ---------------------------------------------
 # Indicators
 # ---------------------------------------------
-if show_sma:
+if show_sma and "Close" in df:
     df["Sma200"] = ta.trend.sma_indicator(df["Close"], window=200)
 
-if show_macd:
+if show_macd and "Close" in df:
     macd = ta.trend.MACD(df["Close"])
     df["Macd"] = macd.macd()
     df["Macd_Signal"] = macd.macd_signal()
     df["Macd_Hist"] = macd.macd_diff()
 
-if show_rsi:
+if show_rsi and "Close" in df:
     df["Rsi"] = ta.momentum.RSIIndicator(df["Close"]).rsi()
 
 # ---------------------------------------------
@@ -149,7 +141,7 @@ if show_rsi and "Rsi" in df:
 # ---------------------------------------------
 # Volume Chart
 # ---------------------------------------------
-if show_volume:
+if show_volume and "Volume" in df:
     st.subheader("Volume")
     fig_vol = go.Figure()
     fig_vol.add_trace(go.Bar(x=df["Datetime"], y=df["Volume"], name="Volume", marker_color="gray"))
