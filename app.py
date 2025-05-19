@@ -46,22 +46,23 @@ if df.empty or "Close" not in df.columns:
     st.stop()
 
 df.reset_index(inplace=True)
-df.columns = [c.title() for c in df.columns]
+df.rename(columns={"Date": "Datetime"}, inplace=True)  # Rename Date to Datetime for consistency
+df.columns = [str(c).title() for c in df.columns]      # Safe rename columns
 
 # ---------------------------------------------
 # Indicators
 # ---------------------------------------------
 if show_sma:
-    df["SMA200"] = ta.trend.sma_indicator(df["Close"], window=200)
+    df["Sma200"] = ta.trend.sma_indicator(df["Close"], window=200)
 
 if show_macd:
     macd = ta.trend.MACD(df["Close"])
-    df["MACD"] = macd.macd()
-    df["MACD_Signal"] = macd.macd_signal()
-    df["MACD_Hist"] = macd.macd_diff()
+    df["Macd"] = macd.macd()
+    df["Macd_Signal"] = macd.macd_signal()
+    df["Macd_Hist"] = macd.macd_diff()
 
 if show_rsi:
-    df["RSI"] = ta.momentum.RSIIndicator(df["Close"]).rsi()
+    df["Rsi"] = ta.momentum.RSIIndicator(df["Close"]).rsi()
 
 # ---------------------------------------------
 # Plotly Chart
@@ -79,10 +80,10 @@ fig.add_trace(go.Candlestick(
 ))
 
 # SMA 200
-if show_sma and "SMA200" in df:
+if show_sma and "Sma200" in df:
     fig.add_trace(go.Scatter(
         x=df["Datetime"],
-        y=df["SMA200"],
+        y=df["Sma200"],
         line=dict(color="blue", width=1.5),
         name="SMA 200"
     ))
@@ -125,10 +126,10 @@ st.plotly_chart(fig, use_container_width=True)
 # ---------------------------------------------
 # RSI Panel
 # ---------------------------------------------
-if show_rsi and "RSI" in df:
+if show_rsi and "Rsi" in df:
     st.subheader("RSI (Relative Strength Index)")
     fig_rsi = go.Figure()
-    fig_rsi.add_trace(go.Scatter(x=df["Datetime"], y=df["RSI"], name="RSI", line=dict(color="purple")))
+    fig_rsi.add_trace(go.Scatter(x=df["Datetime"], y=df["Rsi"], name="RSI", line=dict(color="purple")))
     fig_rsi.add_hline(y=70, line=dict(color="red", dash="dot"))
     fig_rsi.add_hline(y=30, line=dict(color="green", dash="dot"))
     fig_rsi.update_layout(
