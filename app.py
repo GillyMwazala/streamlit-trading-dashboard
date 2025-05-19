@@ -179,7 +179,9 @@ fig.add_trace(go.Candlestick(
     high=df["High"],
     low=df["Low"],
     close=df["Close"],
-    name="Price"
+    name="Price",
+    hoverinfo="x+y+text", # Show x, y, and custom text
+    text=[f"O: {o}<br>H: {h}<br>L: {l}<br>C: {c}" for o, h, l, c in zip(df['Open'], df['High'], df['Low'], df['Close'])] # Custom text for OHLC
 ))
 
 # SMA 200
@@ -248,7 +250,30 @@ fig.update_layout(
     xaxis_rangeslider_visible=False,
     template="plotly_dark" if theme == "Dark" else "plotly_white",
     margin=dict(l=0, r=0, t=30, b=0),
-    height=600
+    height=600,
+    hovermode="x unified",  # Unified hover information for all traces at a given x-value
+    dragmode='pan', # Default to pan, zoom is available in modebar
+    xaxis=dict(
+        showspikes=True,  # Show spike line for x-axis
+        spikemode='across', # Spike line goes across the plot area
+        spikesnap='cursor', # Snap spike to cursor
+        spikethickness=1,
+        spikedash='dot'
+    ),
+    yaxis=dict(
+        showspikes=True,  # Show spike line for y-axis
+        spikemode='across',
+        spikesnap='cursor',
+        spikethickness=1,
+        spikedash='dot'
+    ),
+    legend=dict(
+        orientation="h",
+        yanchor="bottom",
+        y=1.02,
+        xanchor="right",
+        x=1
+    )
 )
 
 st.plotly_chart(fig, use_container_width=True)
