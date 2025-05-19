@@ -23,6 +23,7 @@ show_macd = st.sidebar.checkbox("Show MACD", value=True)
 show_rsi = st.sidebar.checkbox("Show RSI", value=True)
 show_volume = st.sidebar.checkbox("Show Volume", value=True)
 show_fvg = st.sidebar.checkbox("Show Fair Value Gaps", value=True)
+show_signals = st.sidebar.checkbox("Show Buy/Sell Signals on Chart", value=True)
 
 # ---------------------------------------------
 # Data Fetching
@@ -93,6 +94,79 @@ if show_rsi and "Close" in df:
     df["Rsi"] = ta.momentum.RSIIndicator(df["Close"]).rsi()
 
 # ---------------------------------------------
+# Signal Generation
+# ---------------------------------------------
+# Initialize signal columns
+df['Sma_Buy_Signal'] = False
+df['Sma_Sell_Signal'] = False
+df['Macd_Buy_Signal'] = False
+df['Macd_Sell_Signal'] = False
+df['Rsi_Buy_Signal'] = False
+df['Rsi_Sell_Signal'] = False
+
+# SMA Signals
+if show_sma and "Sma200" in df.columns and "Close" in df.columns:
+    df.loc[(df['Close'] > df['Sma200']) & (df['Close'].shift(1) <= df['Sma200'].shift(1)), 'Sma_Buy_Signal'] = True
+    df.loc[(df['Close'] < df['Sma200']) & (df['Close'].shift(1) >= df['Sma200'].shift(1)), 'Sma_Sell_Signal'] = True
+
+# MACD Signals
+if show_macd and "Macd" in df.columns and "Macd_Signal" in df.columns:
+    df.loc[(df['Macd'] > df['Macd_Signal']) & (df['Macd'].shift(1) <= df['Macd_Signal'].shift(1)), 'Macd_Buy_Signal'] = True
+    df.loc[(df['Macd'] < df['Macd_Signal']) & (df['Macd'].shift(1) >= df['Macd_Signal'].shift(1)), 'Macd_Sell_Signal'] = True
+
+# RSI Signals
+if show_rsi and "Rsi" in df.columns:
+    rsi_buy_threshold = 30
+    rsi_sell_threshold = 70
+    df.loc[(df['Rsi'] > rsi_buy_threshold) & (df['Rsi'].shift(1) <= rsi_buy_threshold), 'Rsi_Buy_Signal'] = True
+    df.loc[(df['Rsi'] < rsi_sell_threshold) & (df['Rsi'].shift(1) >= rsi_sell_threshold), 'Rsi_Sell_Signal'] = True
+
+# Consolidated Signal Score
+df['Signal_Score'] = 0
+# Ensure columns exist before trying to access them for scoring
+if 'Sma_Buy_Signal' in df.columns: # These columns are always created now
+    df['Signal_Score'] += df['Sma_Buy_Signal'].astype(int)
+    df['Signal_Score'] -= df['Sma_Sell_Signal'].astype(int)
+if 'Macd_Buy_Signal' in df.columns:
+    df['Signal_Score'] += df['Macd_Buy_Signal'].astype(int)
+    df['Signal_Score'] -= df['Macd_Sell_Signal'].astype(int)
+if 'Rsi_Buy_Signal' in df.columns:
+    df['Signal_Score'] += df['Rsi_Buy_Signal'].astype(int)
+    df['Signal_Score'] -= df['Rsi_Sell_Signal'].astype(int)
+
+# Determine Consolidated Signal
+df['Consolidated_Signal'] = "Hold"
+consensus_threshold = 1  # Min score for a Buy/Sell signal (e.g., 1 means any indicator can trigger)
+df.loc[df['Signal_Score'] >= consensus_threshold, 'Consolidated_Signal'] = "Buy"
+df.loc[df['Signal_Score'] <= -consensus_threshold, 'Consolidated_Signal'] = "Sell"
+
+# ---------------------------------------------
+# Display Latest Signal
+# ---------------------------------------------
+if not df.empty and 'Consolidated_Signal' in df.columns and 'Close' in df.columns and 'Datetime' in df.columns:
+    if len(df) > 0: # Check if DataFrame has rows
+        latest_signal = df['Consolidated_Signal'].iloc[-1]
+        latest_price = df['Close'].iloc[-1]
+        latest_time = df['Datetime'].iloc[-1]
+        
+        signal_color = "green" if latest_signal == "Buy" else "red" if latest_signal == "Sell" else "#808080" # Gray for Hold
+        
+        st.sidebar.subheader("Latest Signal:")
+        st.sidebar.markdown(f"""
+        <div style="padding: 10px; border-radius: 5px; background-color: #262730; margin-bottom: 10px; border: 1px solid {signal_color};">
+        <p style="font-size: 1.0em; margin-bottom: 2px; color: #FAFAFA;">{symbol} at {latest_price:.2f}</p>
+        <p style="font-size: 1.4em; color: {signal_color}; font-weight: bold; margin-bottom: 2px;">{latest_signal.upper()}</p>
+        <p style="font-size: 0.8em; color: #808080;">{latest_time.strftime('%Y-%m-%d %H:%M:%S')}</p>
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.sidebar.subheader("Latest Signal:")
+        st.sidebar.info("No data available to determine signal.")
+else:
+    st.sidebar.subheader("Latest Signal:")
+    st.sidebar.info("Signal data not available (indicators might be off or insufficient data).")
+
+# ---------------------------------------------
 # Plotly Chart
 # ---------------------------------------------
 fig = go.Figure()
@@ -140,6 +214,33 @@ if show_fvg:
                 line_width=0,
                 layer="below"
             )
+
+# Plot Buy/Sell Signals
+if show_signals and 'Consolidated_Signal' in df.columns and 'Low' in df.columns and 'High' in df.columns:
+    buy_signals_df = df[df['Consolidated_Signal'] == 'Buy']
+    sell_signals_df = df[df['Consolidated_Signal'] == 'Sell']
+
+    if not buy_signals_df.empty:
+        fig.add_trace(go.Scatter(
+            x=buy_signals_df["Datetime"],
+            y=buy_signals_df["Low"] * 0.985, # Place slightly below the low
+            mode="markers",
+            marker=dict(symbol="triangle-up", color="rgba(0, 255, 0, 0.9)", size=10, line=dict(width=1, color='DarkGreen')),
+            name="Buy Signal",
+            hoverinfo="text",
+            hovertext=[f"Buy Signal<br>{row.Datetime.strftime('%Y-%m-%d %H:%M')}<br>Price: {row.Close:.2f}" for index, row in buy_signals_df.iterrows()]
+        ))
+    
+    if not sell_signals_df.empty:
+        fig.add_trace(go.Scatter(
+            x=sell_signals_df["Datetime"],
+            y=sell_signals_df["High"] * 1.015, # Place slightly above the high
+            mode="markers",
+            marker=dict(symbol="triangle-down", color="rgba(255, 0, 0, 0.9)", size=10, line=dict(width=1, color='DarkRed')),
+            name="Sell Signal",
+            hoverinfo="text",
+            hovertext=[f"Sell Signal<br>{row.Datetime.strftime('%Y-%m-%d %H:%M')}<br>Price: {row.Close:.2f}" for index, row in sell_signals_df.iterrows()]
+        ))
 
 # Chart Layout
 fig.update_layout(
