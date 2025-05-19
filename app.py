@@ -41,13 +41,20 @@ st.subheader(f"📈 {symbol} - {timeframe} Chart")
 df = yf.download(tickers=symbol, interval=interval_map[timeframe], period=period)
 
 # Check for valid data
-if df.empty or "Close" not in df.columns:
+if df.empty:
     st.error("❌ Failed to fetch data. Try a different symbol or timeframe.")
     st.stop()
 
 df.reset_index(inplace=True)
-df.rename(columns={"Date": "Datetime"}, inplace=True)  # Rename Date to Datetime for consistency
-df.columns = [str(c).title() for c in df.columns]      # Safe rename columns
+df.columns = [c.strip().title() for c in df.columns]  # Normalize column names
+
+# Verify required columns
+required_cols = ["Datetime", "Open", "High", "Low", "Close", "Volume"]
+missing = [col for col in required_cols if col not in df.columns]
+if missing:
+    st.error(f"❌ Missing columns in data: {', '.join(missing)}")
+    st.write("Columns found:", df.columns.tolist())
+    st.stop()
 
 # ---------------------------------------------
 # Indicators
