@@ -24,6 +24,7 @@ show_rsi = st.sidebar.checkbox("Show RSI", value=True)
 show_volume = st.sidebar.checkbox("Show Volume", value=True)
 show_fvg = st.sidebar.checkbox("Show Fair Value Gaps", value=True)
 show_signals = st.sidebar.checkbox("Show Buy/Sell Signals on Chart", value=True)
+consensus_threshold_input = st.sidebar.number_input("Signal Consensus Threshold (1-3)", min_value=1, max_value=3, value=2, step=1, help="Number of indicators that must agree for a Buy/Sell signal.")
 
 # ---------------------------------------------
 # Data Fetching
@@ -136,7 +137,7 @@ if 'Rsi_Buy_Signal' in df.columns:
 
 # Determine Consolidated Signal
 df['Consolidated_Signal'] = "Hold"
-consensus_threshold = 1  # Min score for a Buy/Sell signal (e.g., 1 means any indicator can trigger)
+consensus_threshold = consensus_threshold_input  # Use the user-defined threshold
 df.loc[df['Signal_Score'] >= consensus_threshold, 'Consolidated_Signal'] = "Buy"
 df.loc[df['Signal_Score'] <= -consensus_threshold, 'Consolidated_Signal'] = "Sell"
 
