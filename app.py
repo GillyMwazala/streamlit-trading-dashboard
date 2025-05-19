@@ -10,14 +10,10 @@ import ta
 st.set_page_config(page_title="Trading Dashboard", layout="wide")
 st.title("📊 Real-Time Trading Dashboard")
 
-# Light/Dark mode toggle
+# Sidebar
 theme = st.sidebar.radio("Theme", ["Light", "Dark"])
-
-# Symbol & Timeframe selectors
 symbol = st.sidebar.selectbox("Select Symbol", ["BTC-USD", "ETH-USD", "AAPL", "TSLA"])
 timeframe = st.sidebar.selectbox("Select Timeframe", ["1m", "5m", "15m", "1h", "1d"])
-
-# Indicator toggles
 show_sma = st.sidebar.checkbox("Show SMA 200", value=True)
 show_macd = st.sidebar.checkbox("Show MACD", value=True)
 show_rsi = st.sidebar.checkbox("Show RSI", value=True)
@@ -45,22 +41,30 @@ if df.empty or "Close" not in df.columns:
     st.error("❌ Failed to fetch data. Try a different symbol or timeframe.")
     st.stop()
 
+# Ensure the datetime is a column
+df = df.copy()
 df.reset_index(inplace=True)
-df.columns = [str(c).strip().title() for c in df.columns]  # Safely normalize column names
+df.columns = [str(c).strip().title() for c in df.columns]  # Normalize column names
+
+# Rename time column to 'Datetime' (some versions use 'Datetime', others use 'Date')
+if 'Date' in df.columns:
+    df.rename(columns={'Date': 'Datetime'}, inplace=True)
+elif 'Datetime' not in df.columns and df.index.name:
+    df['Datetime'] = df.index
 
 # ---------------------------------------------
 # Indicators
 # ---------------------------------------------
-if show_sma and "Close" in df:
+if show_sma:
     df["Sma200"] = ta.trend.sma_indicator(df["Close"], window=200)
 
-if show_macd and "Close" in df:
+if show_macd:
     macd = ta.trend.MACD(df["Close"])
     df["Macd"] = macd.macd()
     df["Macd_Signal"] = macd.macd_signal()
     df["Macd_Hist"] = macd.macd_diff()
 
-if show_rsi and "Close" in df:
+if show_rsi:
     df["Rsi"] = ta.momentum.RSIIndicator(df["Close"]).rsi()
 
 # ---------------------------------------------
@@ -68,7 +72,6 @@ if show_rsi and "Close" in df:
 # ---------------------------------------------
 fig = go.Figure()
 
-# Candlestick
 fig.add_trace(go.Candlestick(
     x=df["Datetime"],
     open=df["Open"],
@@ -78,7 +81,6 @@ fig.add_trace(go.Candlestick(
     name="Price"
 ))
 
-# SMA 200
 if show_sma and "Sma200" in df:
     fig.add_trace(go.Scatter(
         x=df["Datetime"],
@@ -87,7 +89,6 @@ if show_sma and "Sma200" in df:
         name="SMA 200"
     ))
 
-# Fair Value Gaps
 if show_fvg:
     for i in range(2, len(df)):
         a = df.iloc[i - 2]
@@ -112,7 +113,6 @@ if show_fvg:
                 layer="below"
             )
 
-# Chart Layout
 fig.update_layout(
     xaxis_rangeslider_visible=False,
     template="plotly_dark" if theme == "Dark" else "plotly_white",
@@ -123,7 +123,7 @@ fig.update_layout(
 st.plotly_chart(fig, use_container_width=True)
 
 # ---------------------------------------------
-# RSI Panel
+# RSI Chart
 # ---------------------------------------------
 if show_rsi and "Rsi" in df:
     st.subheader("RSI (Relative Strength Index)")
