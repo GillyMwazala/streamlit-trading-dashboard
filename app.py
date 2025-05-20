@@ -457,12 +457,12 @@ def get_ai_analysis(data, analysis_types, symbol, timeframe):
         
         # Safely format recent price data
         for idx, row in recent_data.iterrows():
-            # Extract scalar values to avoid Series formatting issues
-            open_val = float(row['Open'].iloc[0]) if hasattr(row['Open'], 'iloc') else float(row['Open'])
-            high_val = float(row['High'].iloc[0]) if hasattr(row['High'], 'iloc') else float(row['High'])
-            low_val = float(row['Low'].iloc[0]) if hasattr(row['Low'], 'iloc') else float(row['Low'])
-            close_val = float(row['Close'].iloc[0]) if hasattr(row['Close'], 'iloc') else float(row['Close'])
-            vol_val = int(float(row['Volume'].iloc[0]) if hasattr(row['Volume'], 'iloc') else float(row['Volume']))
+            # Extract scalar values
+            open_val = float(row['Open'])
+            high_val = float(row['High'])
+            low_val = float(row['Low'])
+            close_val = float(row['Close'])
+            vol_val = int(float(row['Volume']))
             
             # Format the timestamp
             if hasattr(idx, 'strftime'):
