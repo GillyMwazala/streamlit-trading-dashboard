@@ -228,6 +228,35 @@ st.markdown("""
     code {
         color: #56d1d8 !important;
     }
+    /* Additional explicit text color for Streamlit widgets */
+    .stTextInput input, .stTextArea textarea, .stNumberInput input {
+        color: #ffffff !important;
+        background-color: #2a2e39 !important; /* Ensure input backgrounds are also dark */
+    }
+    .stSelectbox div[data-baseweb="select"] > div, /* Selected value in selectbox */
+    .stMultiSelect div[data-baseweb="select"] > div /* Selected values in multiselect */
+     {
+        color: #ffffff !important;
+    }
+    
+    /* Dropdown menu items for selectbox/multiselect */
+    div[data-baseweb="popover"] ul[role="listbox"] li {
+        background-color: #1e222d !important;
+        color: #ffffff !important;
+    }
+    div[data-baseweb="popover"] ul[role="listbox"] li:hover {
+        background-color: #2962ff !important;
+    }
+
+    /* Ensure radio and checkbox labels are white */
+    .stRadio label, .stCheckbox label {
+        color: #ffffff !important;
+    }
+    
+    /* Ensure st.info/success/warning/error text is explicitly white if not covered by .stAlert */
+    .stAlert > div > div { /* Targeting the inner div that often holds the text */
+        color: #ffffff !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -601,7 +630,12 @@ def get_ai_analysis(data, analysis_types, symbol, timeframe):
                     
                 if "Entry/Exit Points" in analysis_types:
                     analysis_request += """
-                    - Entry/Exit Points: Identify specific price levels that could serve as optimal entry and exit points based on current market structure. Include clear entry signals, recommended stop-loss levels, and profit targets with rationale for each.
+                    - Entry/Exit Points: Identify specific price levels that could serve as optimal entry and exit points based on current market structure.
+                      For each entry point, specify:
+                        - The type of entry (e.g., breakout, pullback to support, FVG fill).
+                        - Key confirmation signals to watch for (e.g., candlestick pattern, volume spike, indicator crossover).
+                        - Conditions that would invalidate this entry setup.
+                      Include clear, recommended stop-loss levels (with rationale, e.g., below recent swing low, ATR-based) and at least two profit targets with risk-reward ratios.
                     """
                     
                 if "Volume Analysis" in analysis_types:
@@ -616,14 +650,19 @@ def get_ai_analysis(data, analysis_types, symbol, timeframe):
                 
                 analysis_request += """
                 
-                Finally, provide a clear trading recommendation with these elements:
-                1. Market Direction: Bullish, Bearish, or Neutral with confidence level (Low, Medium, High)
-                2. Suggested Entry Point: Specific price level with rationale
-                3. Stop Loss: Recommended level with explanation
-                4. Take Profit Targets: At least 2 price targets with risk-reward ratios
-                5. Timeframe: Expected duration for the setup to play out
+                Finally, provide a clear, actionable trading recommendation with these elements:
+                1. Overall Market Bias: Bullish, Bearish, or Neutral, with a confidence level (Low, Medium, High).
+                2. Primary Trade Setup:
+                    - Suggested Entry Point(s): Specific price level(s) or zone.
+                    - Entry Rationale: Detailed explanation linking to the analysis (e.g., "Entry on pullback to confirmed support at $X, coinciding with bullish divergence on RSI").
+                    - Confirmation Signals: What specific chart events or indicator readings would confirm the entry?
+                    - Stop Loss: Recommended price level and why (e.g., "SL at $Y, just below the 50-period SMA and recent swing low").
+                    - Take Profit Targets: At least 2 price targets (e.g., TP1 at $Z1 targeting nearest resistance, TP2 at $Z2 for further extension).
+                    - Risk-Reward Ratio: For each target.
+                3. Alternative Scenarios: Briefly mention any secondary setups or what might invalidate the primary view.
+                4. Timeframe: Expected duration for the primary setup to play out (e.g., intraday, 1-3 days, 1 week).
                 
-                Format your analysis for maximum readability with clear sections and bullet points where appropriate.
+                Format your analysis for maximum readability with clear sections, bold text for key terms, and bullet points where appropriate. Be precise and avoid vague statements.
                 """
                 
                 # Make the API call
